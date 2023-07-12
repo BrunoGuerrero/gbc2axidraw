@@ -1,8 +1,5 @@
 <html>
-
-
 	<body>
-
 		<input id="image-input" type="file"><br>
 		Resulting SVG:<br>
 		<svg id="svg" height="112" width="125" xmlns="http://www.w3.org/2000/svg"></svg><br>
@@ -12,102 +9,99 @@
 			<img id="sourceImage" src="" style="display:none"><br>
 			<canvas id="canvas" height="112" width="125"><br>
 		</div>
-
-
-
 	</body>
-	
+
 	<script>
-	(function() {
-	    function rgbToHex(r, g, b) {
-			if (r > 255 || g > 255 || b > 255)
-				throw "Invalid color component";
-			return ((r << 16) | (g << 8) | b).toString(16);
-		}
-		
-		function dlSVG() {	
-			var svg = document.getElementById("svg");
-			var xml = new XMLSerializer().serializeToString(svg);
+		(function () {
+			function rgbToHex(r, g, b) {
+				if (r > 255 || g > 255 || b > 255)
+					throw "Invalid color component";
+				return ((r << 16) | (g << 8) | b).toString(16);
+			}
 
-			var svg64 = btoa(xml);
-			var b64Start = 'data:application/octet-stream/svg+xml;base64,';
-			var fullSvg = b64Start + svg64;
+			function dlSVG() {
+				var svg = document.getElementById("svg");
+				var xml = new XMLSerializer().serializeToString(svg);
 
-			this.setAttribute("download", "sheet.svg")
-			this.href = fullSvg;
-		}
-		
-		const canvas = document.getElementById("canvas")
-		const ctx = canvas.getContext("2d")
-		
-		ctx.fillStyle = 'black';
-		ctx.rect(0, 0, 125, 112);
-		ctx.fill();
-				
-		imageInput = document.getElementById("image-input");
-		imageInput.addEventListener("change", ingestImage);
-		sourceImageElt = document.getElementById("sourceImage");
-		
-		buttonElement = document.getElementById("dlSVG");
-        buttonElement.addEventListener('click', dlSVG, false);
-		
-		function ingestImage() {
-        const reader = new FileReader();
+				var svg64 = btoa(xml);
+				var b64Start = 'data:application/octet-stream/svg+xml;base64,';
+				var fullSvg = b64Start + svg64;
 
-        reader.addEventListener("load", () => {
-            const uploaded_image = reader.result;
+				this.setAttribute("download", "sheet.svg")
+				this.href = fullSvg;
+			}
 
-            sourceWidth = 125;
-            sourceHeight = 112;
+			const canvas = document.getElementById("canvas")
+			const ctx = canvas.getContext("2d")
 
-			layers = {};
+			ctx.fillStyle = 'black';
+			ctx.rect(0, 0, 125, 112);
+			ctx.fill();
 
-            sourceImageElt.src = uploaded_image;
-            sourceImageElt.onload = function() {
-				ctx.drawImage(sourceImageElt, 0, 0, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
-				
-				for(x = 0; x < 125; x++) {
-					for(y = 0; y < 112; y++) {
-						pixelData = ctx.getImageData(x, y, 1, 1).data;
-						hexColor = "#" + ("000000" + rgbToHex(pixelData[0], pixelData[1], pixelData[2])).slice(-6);
-						if(!(hexColor in layers)) {
-							layers[hexColor] = []
+			imageInput = document.getElementById("image-input");
+			imageInput.addEventListener("change", ingestImage);
+			sourceImageElt = document.getElementById("sourceImage");
+
+			buttonElement = document.getElementById("dlSVG");
+			buttonElement.addEventListener('click', dlSVG, false);
+
+			function ingestImage() {
+				const reader = new FileReader();
+
+				reader.addEventListener("load", () => {
+					const uploaded_image = reader.result;
+
+					sourceWidth = 125;
+					sourceHeight = 112;
+
+					layers = {};
+
+					sourceImageElt.src = uploaded_image;
+					sourceImageElt.onload = function () {
+						ctx.drawImage(sourceImageElt, 0, 0, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
+
+						for (x = 0; x < 125; x++) {
+							for (y = 0; y < 112; y++) {
+								pixelData = ctx.getImageData(x, y, 1, 1).data;
+								hexColor = "#" + ("000000" + rgbToHex(pixelData[0], pixelData[1], pixelData[2])).slice(-6);
+								if (!(hexColor in layers)) {
+									layers[hexColor] = []
+								}
+								layers[hexColor].push([x, y])
+							}
 						}
-						layers[hexColor].push([x, y])
-					}
-				}
-				
-				svgElement = document.getElementById('svg');
-				svgElement.setAttribute('width', 125)
-				svgElement.setAttribute('height', 112)
-				svgElement.setAttribute('xmlns', "http://www.w3.org/2000/svg")
 
-				layerIndex = 0;
-				for(layerColor in layers) {
-					layer = layers[layerColor]
-					gElement = document.createElementNS("http://www.w3.org/2000/svg", "g");
-					gElement.setAttribute("inkscape:groupmode", "layer")
-					gElement.setAttribute("inkscape:label", layerIndex)
-										
-					for(pixel of layer) {
-						rectElement = document.createElementNS("http://www.w3.org/2000/svg", "rect")
-						rectElement.setAttribute("x", pixel[0])
-						rectElement.setAttribute("y", pixel[1])
-						rectElement.setAttribute("width", 1)
-						rectElement.setAttribute("height", 1)
-						rectElement.setAttribute("fill", layerColor)
-						rectElement.setAttribute("stroke-width", "0")
-						gElement.appendChild(rectElement);
-					}
-					svgElement.appendChild(gElement);
-					layerIndex++;
-				}
-			};
-        });
+						svgElement = document.getElementById('svg');
+						svgElement.setAttribute('width', 125)
+						svgElement.setAttribute('height', 112)
+						svgElement.setAttribute('xmlns', "http://www.w3.org/2000/svg")
 
-        reader.readAsDataURL(this.files[0]);
-    }
-	})();
+						layerIndex = 0;
+						for (layerColor in layers) {
+							layer = layers[layerColor]
+							gElement = document.createElementNS("http://www.w3.org/2000/svg", "g");
+							gElement.setAttribute("inkscape:groupmode", "layer")
+							gElement.setAttribute("inkscape:label", layerIndex)
+
+							for (pixel of layer) {
+								rectElement = document.createElementNS("http://www.w3.org/2000/svg", "rect")
+								rectElement.setAttribute("x", pixel[0])
+								rectElement.setAttribute("y", pixel[1])
+								rectElement.setAttribute("width", 1)
+								rectElement.setAttribute("height", 1)
+								rectElement.setAttribute("fill", layerColor)
+								rectElement.setAttribute("stroke-width", "0")
+								gElement.appendChild(rectElement);
+							}
+							svgElement.appendChild(gElement);
+							layerIndex++;
+						}
+					};
+				});
+
+				reader.readAsDataURL(this.files[0]);
+			}
+		})();
 	</script>
 
 </html>
