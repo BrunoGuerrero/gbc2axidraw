@@ -6,13 +6,23 @@
 		<a id="dlSVG" href="#">Download</a><br>
 		<div style="display:none">
 			Source image:<br>
-			<img id="sourceImage" src="" style="display:none"><br>
+			<img id="sourceImage" src=""><br>
 			<canvas id="canvas" height="112" width="125"><br>
 		</div>
+
+		<form style="display:none">
+			<input type="radio" name="style" value="square" checked style="display:none"><label>Squares</label><br>
+			<input type="radio" name="style" value="circle" style="display:none"><label>Circle</label><br>
+		</form>
 	</body>
 
 	<script>
 		(function () {
+			const canvasElement = document.getElementById("canvas")
+			const ctx = canvasElement.getContext("2d")
+
+			loadedImage = null;
+
 			function rgbToHex(r, g, b) {
 				if (r > 255 || g > 255 || b > 255)
 					throw "Invalid color component";
@@ -31,12 +41,61 @@
 				this.href = fullSvg;
 			}
 
-			const canvas = document.getElementById("canvas")
-			const ctx = canvas.getContext("2d")
+			function changeStyle(event) {
+				rects = document.getElementsByTagName("rect")	
+				circs = document.getElementsByTagName("circle")	
+				paths = document.getElementsByTagName("path")	
 
-			ctx.fillStyle = 'black';
-			ctx.rect(0, 0, 125, 112);
-			ctx.fill();
+				elementsToRemove = []
+
+				if(event.target.value == "circle") {
+					for(rect of rects) {
+						groupNode = rect.parentNode;
+
+						x = parseFloat(rect.getAttribute("x"))
+						y = parseFloat(rect.getAttribute("y"))
+
+						circElement = document.createElementNS("http://www.w3.org/2000/svg", "circle")
+						circElement.setAttribute("cx", x + 0.5)
+						circElement.setAttribute("cy", y + 0.5)
+						circElement.setAttribute("r", 0.5)
+						circElement.setAttribute("fill", rect.getAttribute("fill"))
+
+						groupNode.appendChild(circElement)
+						elementsToRemove.push(rect);
+					}
+				}
+
+				if(event.target.value == "square") {
+					for(circ of circs) {
+						groupNode = circ.parentNode;
+
+						x = parseFloat(circ.getAttribute("cx"))
+						y = parseFloat(circ.getAttribute("cy"))
+
+						rectElement = document.createElementNS("http://www.w3.org/2000/svg", "circle")
+						rectElement.setAttribute("x", x - 0.5)
+						rectElement.setAttribute("y", y - 0.5)
+						rectElement.setAttribute("width", 1)
+						rectElement.setAttribute("height", 1)
+						rectElement.setAttribute("fill", circ.getAttribute("fill"))
+
+						groupNode.appendChild(rectElement)
+						elementsToRemove.push(circ);
+					}
+				}
+
+				for(elt of elementsToRemove) {
+					parent = elt.parentNode;
+					parent.removeChild(elt)
+					delete(elt)
+				}
+			}
+
+			styleInputs = document.querySelectorAll("input[name='style']");
+			for(input of styleInputs) {
+				input.addEventListener("change", changeStyle);
+			}
 
 			imageInput = document.getElementById("image-input");
 			imageInput.addEventListener("change", ingestImage);
@@ -51,17 +110,24 @@
 				reader.addEventListener("load", () => {
 					const uploaded_image = reader.result;
 
-					sourceWidth = 125;
-					sourceHeight = 112;
-
 					layers = {};
 
 					sourceImageElt.src = uploaded_image;
 					sourceImageElt.onload = function () {
+						sourceWidth = this.width;
+						sourceHeight = this.height;
+
+						canvasElement.setAttribute('width', sourceWidth);
+						canvasElement.setAttribute('height', sourceHeight);
+
+						ctx.fillStyle = 'white';
+						ctx.rect(0, 0, sourceWidth, sourceHeight);
+						ctx.fill();
+
 						ctx.drawImage(sourceImageElt, 0, 0, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
 
-						for (x = 0; x < 125; x++) {
-							for (y = 0; y < 112; y++) {
+						for (x = 0; x < sourceWidth; x++) {
+							for (y = 0; y < sourceHeight; y++) {
 								pixelData = ctx.getImageData(x, y, 1, 1).data;
 								hexColor = "#" + ("000000" + rgbToHex(pixelData[0], pixelData[1], pixelData[2])).slice(-6);
 								if (!(hexColor in layers)) {
@@ -72,8 +138,8 @@
 						}
 
 						svgElement = document.getElementById('svg');
-						svgElement.setAttribute('width', 125)
-						svgElement.setAttribute('height', 112)
+						svgElement.setAttribute('width', sourceWidth)
+						svgElement.setAttribute('height', sourceHeight)
 						svgElement.setAttribute('xmlns', "http://www.w3.org/2000/svg")
 
 						layerIndex = 0;
