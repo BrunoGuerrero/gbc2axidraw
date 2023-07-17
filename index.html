@@ -2,17 +2,18 @@
 	<body>
 		<input id="image-input" type="file"><br>
 		Resulting SVG:<br>
-		<svg id="svg" height="112" width="125" xmlns="http://www.w3.org/2000/svg"></svg><br>
+		<svg id="svg" height="0" width="0" xmlns="http://www.w3.org/2000/svg"></svg><br>
 		<a id="dlSVG" href="#">Download</a><br>
 		<div style="display:none">
 			Source image:<br>
 			<img id="sourceImage" src=""><br>
-			<canvas id="canvas" height="112" width="125"><br>
+			<canvas id="canvas"><br>
 		</div>
 
-		<form style="display:none">
-			<input type="radio" name="style" value="square" checked style="display:none"><label>Squares</label><br>
-			<input type="radio" name="style" value="circle" style="display:none"><label>Circle</label><br>
+		<form>
+			<input type="radio" name="style" value="square" checked><label>Squares</label><br>
+			<input type="radio" name="style" value="circle"><label>Circle</label><br>
+			<input type="radio" name="style" value="cross"><label>Cross</label>
 		</form>
 	</body>
 
@@ -41,55 +42,88 @@
 				this.href = fullSvg;
 			}
 
+			function clearSVG() {
+				svgElement.innerHTML = "";
+			}
+
+			function fillSVG() {		
+				styleElements = document.querySelectorAll('input[name="style"]')
+
+				for (let radio of styleElements) {
+					if (radio.checked) {
+						style = radio.value;
+					}
+				}
+
+				for (x = 0; x < sourceWidth; x++) {
+					for (y = 0; y < sourceHeight; y++) {
+						pixelData = ctx.getImageData(x, y, 1, 1).data;
+						hexColor = "#" + ("000000" + rgbToHex(pixelData[0], pixelData[1], pixelData[2])).slice(-6);
+						if (!(hexColor in layers)) {
+							layers[hexColor] = []
+						}
+						layers[hexColor].push([x, y])
+					}
+				}
+
+				svgElement = document.getElementById('svg');
+				svgElement.setAttribute('width', sourceWidth)
+				svgElement.setAttribute('height', sourceHeight)
+				svgElement.setAttribute('xmlns', "http://www.w3.org/2000/svg")
+
+				layerIndex = 0;
+				for (layerColor in layers) {
+					layer = layers[layerColor]
+					gElement = document.createElementNS("http://www.w3.org/2000/svg", "g");
+					gElement.setAttribute("inkscape:groupmode", "layer")
+					gElement.setAttribute("inkscape:label", layerIndex)
+
+					for (pixel of layer) {
+						if(style == "square") {
+							shapeElement = document.createElementNS("http://www.w3.org/2000/svg", "rect")
+							shapeElement.setAttribute("x", pixel[0])
+							shapeElement.setAttribute("y", pixel[1])
+							shapeElement.setAttribute("width", 1)
+							shapeElement.setAttribute("height", 1)
+							shapeElement.setAttribute("stroke-width", "0")
+							gElement.appendChild(shapeElement);
+						} else if (style == "circle") {
+							shapeElement = document.createElementNS("http://www.w3.org/2000/svg", "circle")
+							shapeElement.setAttribute("cx", pixel[0] + 0.5)
+							shapeElement.setAttribute("cy", pixel[1] + 0.5)
+							shapeElement.setAttribute("r", 0.5)
+							shapeElement.setAttribute("stroke-width", "0")
+							gElement.appendChild(shapeElement);
+						} else if (style == "cross") {
+							shapeElement = document.createElementNS("http://www.w3.org/2000/svg", "line")
+							shapeElement.setAttribute("x1", pixel[0])
+							shapeElement.setAttribute("y1", pixel[1])
+							shapeElement.setAttribute("x2", pixel[0] + 1)
+							shapeElement.setAttribute("y2", pixel[1] + 1)
+							shapeElement.setAttribute("stroke-width", "0.2")
+							shapeElement.setAttribute("stroke", layerColor)
+							gElement.appendChild(shapeElement);
+
+							shapeElement = document.createElementNS("http://www.w3.org/2000/svg", "line")
+							shapeElement.setAttribute("x1", pixel[0] + 1)
+							shapeElement.setAttribute("y1", pixel[1])
+							shapeElement.setAttribute("x2", pixel[0])
+							shapeElement.setAttribute("y2", pixel[1] + 1)
+							shapeElement.setAttribute("stroke-width", "0.2")
+							shapeElement.setAttribute("stroke", layerColor)
+							gElement.appendChild(shapeElement);
+						}
+						shapeElement.setAttribute("fill", layerColor)
+						gElement.appendChild(shapeElement);
+					}
+					svgElement.appendChild(gElement);
+					layerIndex++;
+				}
+			}
+
 			function changeStyle(event) {
-				rects = document.getElementsByTagName("rect")	
-				circs = document.getElementsByTagName("circle")	
-				paths = document.getElementsByTagName("path")	
-
-				elementsToRemove = []
-
-				if(event.target.value == "circle") {
-					for(rect of rects) {
-						groupNode = rect.parentNode;
-
-						x = parseFloat(rect.getAttribute("x"))
-						y = parseFloat(rect.getAttribute("y"))
-
-						circElement = document.createElementNS("http://www.w3.org/2000/svg", "circle")
-						circElement.setAttribute("cx", x + 0.5)
-						circElement.setAttribute("cy", y + 0.5)
-						circElement.setAttribute("r", 0.5)
-						circElement.setAttribute("fill", rect.getAttribute("fill"))
-
-						groupNode.appendChild(circElement)
-						elementsToRemove.push(rect);
-					}
-				}
-
-				if(event.target.value == "square") {
-					for(circ of circs) {
-						groupNode = circ.parentNode;
-
-						x = parseFloat(circ.getAttribute("cx"))
-						y = parseFloat(circ.getAttribute("cy"))
-
-						rectElement = document.createElementNS("http://www.w3.org/2000/svg", "circle")
-						rectElement.setAttribute("x", x - 0.5)
-						rectElement.setAttribute("y", y - 0.5)
-						rectElement.setAttribute("width", 1)
-						rectElement.setAttribute("height", 1)
-						rectElement.setAttribute("fill", circ.getAttribute("fill"))
-
-						groupNode.appendChild(rectElement)
-						elementsToRemove.push(circ);
-					}
-				}
-
-				for(elt of elementsToRemove) {
-					parent = elt.parentNode;
-					parent.removeChild(elt)
-					delete(elt)
-				}
+				clearSVG()
+				fillSVG()
 			}
 
 			styleInputs = document.querySelectorAll("input[name='style']");
@@ -126,42 +160,7 @@
 
 						ctx.drawImage(sourceImageElt, 0, 0, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
 
-						for (x = 0; x < sourceWidth; x++) {
-							for (y = 0; y < sourceHeight; y++) {
-								pixelData = ctx.getImageData(x, y, 1, 1).data;
-								hexColor = "#" + ("000000" + rgbToHex(pixelData[0], pixelData[1], pixelData[2])).slice(-6);
-								if (!(hexColor in layers)) {
-									layers[hexColor] = []
-								}
-								layers[hexColor].push([x, y])
-							}
-						}
-
-						svgElement = document.getElementById('svg');
-						svgElement.setAttribute('width', sourceWidth)
-						svgElement.setAttribute('height', sourceHeight)
-						svgElement.setAttribute('xmlns', "http://www.w3.org/2000/svg")
-
-						layerIndex = 0;
-						for (layerColor in layers) {
-							layer = layers[layerColor]
-							gElement = document.createElementNS("http://www.w3.org/2000/svg", "g");
-							gElement.setAttribute("inkscape:groupmode", "layer")
-							gElement.setAttribute("inkscape:label", layerIndex)
-
-							for (pixel of layer) {
-								rectElement = document.createElementNS("http://www.w3.org/2000/svg", "rect")
-								rectElement.setAttribute("x", pixel[0])
-								rectElement.setAttribute("y", pixel[1])
-								rectElement.setAttribute("width", 1)
-								rectElement.setAttribute("height", 1)
-								rectElement.setAttribute("fill", layerColor)
-								rectElement.setAttribute("stroke-width", "0")
-								gElement.appendChild(rectElement);
-							}
-							svgElement.appendChild(gElement);
-							layerIndex++;
-						}
+						fillSVG();
 					};
 				});
 
