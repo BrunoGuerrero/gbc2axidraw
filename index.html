@@ -1,20 +1,42 @@
 <html>
+	<head>
+		<style>
+			.palette-color {
+				display: inline-block;
+				height: 20px;
+				width: 20px;
+				content: "\00d7";
+				color: white;
+			}
+		</style>
+	</head>
 	<body>
 		<input id="image-input" type="file"><br>
-		Resulting SVG:<br>
-		<svg id="svg" height="0" width="0" xmlns="http://www.w3.org/2000/svg"></svg><br>
-		<a id="dlSVG" href="#">Download</a><br>
-		<div style="display:none">
+		<div id="result" style="display:none">
+			Resulting SVG:<br>
+			<svg id="svg" height="0" width="0" xmlns="http://www.w3.org/2000/svg"></svg><br>
+			<form id="params">
+				<input type="checkbox" name="ignoreBackground"><label>Ignore color at top-left corner</label><br>
+				<input type="checkbox" name="ignoreWhite"><label>Ignore white (#ffffff)</label><br>
+				Show pixels as:<br>
+				<input type="radio" name="style" value="square" checked><label>Squares</label><br>
+				<input type="radio" name="style" value="circle"><label>Circle</label><br>
+				<input type="radio" name="style" value="cross"><label>Cross</label><br>
+				<label>Pixel shape fill:</label>
+				<input type="text" size="3" id="pixelFill" name="fill" value="100">%
+			</form>
+			<a id="dlSVG" href="#">Download</a><br>
+		</div>
+		<details id="info" style="display:none">
+			SVG palette:
+			<div id="palette"></div>
+			<span id="nbPixels"></span> pixels<br>
+			<summary>Image infos</summary>
 			Source image:<br>
 			<img id="sourceImage" src=""><br>
-			<canvas id="canvas"><br>
-		</div>
-
-		<form>
-			<input type="radio" name="style" value="square" checked><label>Squares</label><br>
-			<input type="radio" name="style" value="circle"><label>Circle</label><br>
-			<input type="radio" name="style" value="cross"><label>Cross</label>
-		</form>
+			Source image as canvas:<br>
+			<canvas id="canvas"></canvas><br>
+		</details>
 	</body>
 
 	<script>
@@ -43,11 +65,20 @@
 			}
 
 			function clearSVG() {
+				svgElement = document.getElementById('svg');
 				svgElement.innerHTML = "";
+				layers = {}
 			}
 
-			function fillSVG() {		
+			function fillSVG() {	
+				clearSVG();
+
 				styleElements = document.querySelectorAll('input[name="style"]')
+				pixelFill = document.getElementById('pixelFill').value / 100
+				ignoreBackground = document.querySelector('input[name="ignoreBackground"]').checked
+				ignoreWhite = document.querySelector('input[name="ignoreWhite"]').checked
+
+				console.log(ignoreWhite)
 
 				for (let radio of styleElements) {
 					if (radio.checked) {
@@ -73,6 +104,13 @@
 
 				layerIndex = 0;
 				for (layerColor in layers) {
+
+					if(layerIndex == 0 && ignoreBackground
+						|| ignoreWhite && layerColor == "#ffffff") {
+						layerIndex++;
+						continue;
+					}
+
 					layer = layers[layerColor]
 					gElement = document.createElementNS("http://www.w3.org/2000/svg", "g");
 					gElement.setAttribute("inkscape:groupmode", "layer")
@@ -81,34 +119,34 @@
 					for (pixel of layer) {
 						if(style == "square") {
 							shapeElement = document.createElementNS("http://www.w3.org/2000/svg", "rect")
-							shapeElement.setAttribute("x", pixel[0])
-							shapeElement.setAttribute("y", pixel[1])
-							shapeElement.setAttribute("width", 1)
-							shapeElement.setAttribute("height", 1)
+							shapeElement.setAttribute("x", pixel[0] + ((1 - pixelFill) / 2))
+							shapeElement.setAttribute("y", pixel[1] + ((1 - pixelFill) / 2))
+							shapeElement.setAttribute("width", pixelFill)
+							shapeElement.setAttribute("height", pixelFill)
 							shapeElement.setAttribute("stroke-width", "0")
 							gElement.appendChild(shapeElement);
 						} else if (style == "circle") {
 							shapeElement = document.createElementNS("http://www.w3.org/2000/svg", "circle")
 							shapeElement.setAttribute("cx", pixel[0] + 0.5)
 							shapeElement.setAttribute("cy", pixel[1] + 0.5)
-							shapeElement.setAttribute("r", 0.5)
+							shapeElement.setAttribute("r", 0.5 - ((1 - pixelFill) / 2))
 							shapeElement.setAttribute("stroke-width", "0")
 							gElement.appendChild(shapeElement);
 						} else if (style == "cross") {
 							shapeElement = document.createElementNS("http://www.w3.org/2000/svg", "line")
-							shapeElement.setAttribute("x1", pixel[0])
-							shapeElement.setAttribute("y1", pixel[1])
-							shapeElement.setAttribute("x2", pixel[0] + 1)
-							shapeElement.setAttribute("y2", pixel[1] + 1)
+							shapeElement.setAttribute("x1", pixel[0] + ((1 - pixelFill) / 2))
+							shapeElement.setAttribute("y1", pixel[1] + ((1 - pixelFill) / 2))
+							shapeElement.setAttribute("x2", pixel[0] + 1 - ((1 - pixelFill) / 2))
+							shapeElement.setAttribute("y2", pixel[1] + 1 - ((1 - pixelFill) / 2))
 							shapeElement.setAttribute("stroke-width", "0.2")
 							shapeElement.setAttribute("stroke", layerColor)
 							gElement.appendChild(shapeElement);
 
 							shapeElement = document.createElementNS("http://www.w3.org/2000/svg", "line")
-							shapeElement.setAttribute("x1", pixel[0] + 1)
-							shapeElement.setAttribute("y1", pixel[1])
-							shapeElement.setAttribute("x2", pixel[0])
-							shapeElement.setAttribute("y2", pixel[1] + 1)
+							shapeElement.setAttribute("x1", pixel[0] + 1 - ((1 - pixelFill) / 2))
+							shapeElement.setAttribute("y1", pixel[1] + ((1 - pixelFill) / 2))
+							shapeElement.setAttribute("x2", pixel[0] + ((1 - pixelFill) / 2))
+							shapeElement.setAttribute("y2", pixel[1] + 1 - ((1 - pixelFill) / 2))
 							shapeElement.setAttribute("stroke-width", "0.2")
 							shapeElement.setAttribute("stroke", layerColor)
 							gElement.appendChild(shapeElement);
@@ -119,6 +157,35 @@
 					svgElement.appendChild(gElement);
 					layerIndex++;
 				}
+
+				updateInfo();
+			}
+
+			function updateInfo() {
+				infoElement = document.getElementById("info");
+				infoElement.style.display = "block";
+
+				paletteElement = document.getElementById("palette");
+				paletteElement.innerHTML = "";
+
+				layerIndex = 0;
+				for(layer in layers) {
+
+					if(layerIndex == 0 && ignoreBackground
+						|| ignoreWhite && layer == "#ffffff") {
+						layerIndex++;
+						continue;
+					}
+
+					paletteColorElement = document.createElement("span");
+					paletteColorElement.setAttribute("class", "palette-color");
+					paletteColorElement.style.backgroundColor = layer;
+					paletteElement.appendChild(paletteColorElement);
+
+					layerIndex++;
+				}
+
+				document.getElementById("nbPixels").innerHTML = svgElement.querySelectorAll("g > *").length
 			}
 
 			function changeStyle(event) {
@@ -126,8 +193,8 @@
 				fillSVG()
 			}
 
-			styleInputs = document.querySelectorAll("input[name='style']");
-			for(input of styleInputs) {
+			paramsInputs = document.getElementById("params").children;
+			for(input of paramsInputs) {
 				input.addEventListener("change", changeStyle);
 			}
 
@@ -161,6 +228,9 @@
 						ctx.drawImage(sourceImageElt, 0, 0, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
 
 						fillSVG();
+
+						resultElement = document.getElementById("result");
+						resultElement.style.display = "block";
 					};
 				});
 
